@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch server/server.ts",
-    "build": "tsc -b tsconfig.server.json",
-    "start": "node dist/server.js",
+  "build": "tsc -p tsconfig.server.json",
+  "start": "node dist/server.js",
     "migrate:json": "tsx scripts/migrateFromJson.ts"
   },
   "dependencies": {

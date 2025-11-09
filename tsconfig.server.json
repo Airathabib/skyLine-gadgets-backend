@@ -5,7 +5,6 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "outDir": "./dist",
-    "rootDir": ".",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
@@ -13,6 +12,6 @@
     "resolveJsonModule": true,
     "noEmit": false
   },
-  "include": ["server/**/*"],
+  "include": ["server/server.ts"],
   "exclude": ["node_modules", "dist"]
 }
