@@ -37,7 +37,7 @@ db.exec(`
 `);
 
 // Таблица избранных товаров
-db.exec(` 
+db.exec(`
   CREATE TABLE IF NOT EXISTS favorites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -111,7 +111,9 @@ try {
 
 // =============== СОЗДАНИЕ ПОЛЬЗОВАТЕЛЕЙ ===============
 const createAdmin = () => {
-  const adminExists = db.prepare('SELECT 1 FROM users WHERE login = ?').get('admin');
+  const adminExists = db
+    .prepare('SELECT 1 FROM users WHERE login = ?')
+    .get('admin');
   if (!adminExists) {
     const hashed = bcrypt.hashSync('admin123', 10);
     db.prepare(
@@ -125,7 +127,9 @@ const createAdmin = () => {
 };
 
 const createTestUser = () => {
-  const userExists = db.prepare('SELECT 1 FROM users WHERE login = ?').get('john');
+  const userExists = db
+    .prepare('SELECT 1 FROM users WHERE login = ?')
+    .get('john');
   if (!userExists) {
     const hashed = bcrypt.hashSync('qwerty', 10);
     db.prepare(

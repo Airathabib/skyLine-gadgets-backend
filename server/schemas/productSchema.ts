@@ -1,4 +1,3 @@
-// server/schemas/productSchema.ts
 import { z } from 'zod';
 
 // Базовая схема для Product (без id)

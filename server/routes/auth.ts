@@ -24,11 +24,9 @@ router.post('/register', async (req, res) => {
       .prepare('SELECT * FROM users WHERE login = ? OR email = ?')
       .get(login, email);
     if (existing) {
-      return res
-        .status(409)
-        .json({
-          error: 'Пользователь с таким логином или email уже существует',
-        });
+      return res.status(409).json({
+        error: 'Пользователь с таким логином или email уже существует',
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, saltRounds);
@@ -38,7 +36,7 @@ router.post('/register', async (req, res) => {
     `);
     stmt.run(login, hashedPassword, email, phone, role || 'user');
 
-    // 🔥 Возвращаем созданного пользователя (без пароля!)
+    //Возвращаем созданного пользователя (без пароля!)
     const newUser = db
       .prepare(
         'SELECT id, login, email, phone, role FROM users WHERE login = ?'

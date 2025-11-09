@@ -67,7 +67,9 @@ router.get('/', (req, res) => {
 router.get('/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   try {
-    const product = db.prepare(`SELECT ${selectProductFields} FROM products WHERE id = ?`).get(id);
+    const product = db
+      .prepare(`SELECT ${selectProductFields} FROM products WHERE id = ?`)
+      .get(id);
     if (!product) {
       return res.status(404).json({ error: 'Товар не найден' });
     }
@@ -79,32 +81,13 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // POST /api/products
-router.post('/', auth, adminOnly, validateBody(createProductSchema), (req, res) => {
-  const {
-    id,
-    brand,
-    category,
-    quantity,
-    title,
-    description,
-    price,
-    addedToCart = false,
-    accum,
-    memory,
-    photo,
-    rating = 0,
-  } = req.body;
-
-  if (!id || !title || price == null) {
-    return res.status(400).json({ error: 'Обязательные поля: id, title, price' });
-  }
-
-  try {
-    const stmt = db.prepare(`
-      INSERT INTO products (id, brand, category, quantity, title, description, price,  addedToCart, accum, memory, photo, rating)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    stmt.run(
+router.post(
+  '/',
+  auth,
+  adminOnly,
+  validateBody(createProductSchema),
+  (req, res) => {
+    const {
       id,
       brand,
       category,
@@ -112,14 +95,68 @@ router.post('/', auth, adminOnly, validateBody(createProductSchema), (req, res) 
       title,
       description,
       price,
-      addedToCart ? 1 : 0,
+      addedToCart = false,
       accum,
       memory,
-      photo.trim(),
-      rating
-    );
-    res.status(201).json({
-      id,
+      photo,
+      rating = 0,
+    } = req.body;
+
+    if (!id || !title || price == null) {
+      return res
+        .status(400)
+        .json({ error: 'Обязательные поля: id, title, price' });
+    }
+
+    try {
+      const stmt = db.prepare(`
+      INSERT INTO products (id, brand, category, quantity, title, description, price,  addedToCart, accum, memory, photo, rating)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+      stmt.run(
+        id,
+        brand,
+        category,
+        quantity,
+        title,
+        description,
+        price,
+        addedToCart ? 1 : 0,
+        accum,
+        memory,
+        photo.trim(),
+        rating
+      );
+      res.status(201).json({
+        id,
+        brand,
+        category,
+        quantity,
+        title,
+        description,
+        price,
+        addedToCart,
+        accum,
+        memory,
+        photo,
+        rating,
+      });
+    } catch (err) {
+      console.error('Ошибка создания товара:', err); // ← добавь это
+      res.status(500).json({ error: 'Ошибка при создании товара' });
+    }
+  }
+);
+
+// PUT /api/products/:id
+router.put(
+  '/:id',
+  auth,
+  adminOnly,
+  validateBody(updateProductSchema),
+  async (req, res) => {
+    const { id } = req.params;
+    const {
       brand,
       category,
       quantity,
@@ -131,60 +168,41 @@ router.post('/', auth, adminOnly, validateBody(createProductSchema), (req, res) 
       memory,
       photo,
       rating,
-    });
-  } catch (err) {
-    console.error('Ошибка создания товара:', err); // ← добавь это
-    res.status(500).json({ error: 'Ошибка при создании товара' });
-  }
-});
+    } = req.body;
 
-// PUT /api/products/:id
-router.put('/:id', auth, adminOnly, validateBody(updateProductSchema), async (req, res) => {
-  const { id } = req.params;
-  const {
-    brand,
-    category,
-    quantity,
-    title,
-    description,
-    price,
-    addedToCart,
-    accum,
-    memory,
-    photo,
-    rating,
-  } = req.body;
+    try {
+      const existing = db
+        .prepare('SELECT * FROM products WHERE id = ?')
+        .get(id);
+      if (!existing) return res.status(404).json({ error: 'Товар не найден' });
 
-  try {
-    const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
-    if (!existing) return res.status(404).json({ error: 'Товар не найден' });
-
-    const stmt = db.prepare(`
+      const stmt = db.prepare(`
       UPDATE products
       SET brand = ?, category = ?, quantity = ?, title = ?, description = ?, price = ?, addedToCart = ?, accum = ?, memory = ?, photo = ?, rating = ?
       WHERE id = ?
     `);
-    stmt.run(
-      brand,
-      category,
-      quantity,
-      title,
-      description,
-      price,
-      addedToCart,
-      accum,
-      memory,
-      photo,
-      rating,
-      id
-    );
+      stmt.run(
+        brand,
+        category,
+        quantity,
+        title,
+        description,
+        price,
+        addedToCart,
+        accum,
+        memory,
+        photo,
+        rating,
+        id
+      );
 
-    const updated = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
-    res.json(updated);
-  } catch (err) {
-    res.status(500).json({ error: 'Ошибка при обновлении товара' });
+      const updated = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ error: 'Ошибка при обновлении товара' });
+    }
   }
-});
+);
 
 // PATCH /api/products/:id
 router.patch('/:id', validateBody(toggleLikeSchema), async (req, res) => {

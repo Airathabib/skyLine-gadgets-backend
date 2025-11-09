@@ -6,5 +6,5 @@ export interface Comment {
   userComment: string;
   date: string;
   productId: string;
-	replies?: Comment[]; 
+  replies?: Comment[];
 }

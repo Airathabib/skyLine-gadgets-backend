@@ -1,7 +1,7 @@
 // server/utils/jwt.ts
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = 'secret123'; // ← замени на .env в продакшене!
+const JWT_SECRET = 'secret123';
 
 export const generateToken = (user: {
   id: number;

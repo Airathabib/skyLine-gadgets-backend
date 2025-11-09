@@ -30,18 +30,20 @@ router.post('/', auth, (req, res) => {
   const userId = (req as any).user.id;
   const { productId } = req.body;
 
-  if (!productId) return res.status(400).json({ error: 'productId обязателен' });
+  if (!productId)
+    return res.status(400).json({ error: 'productId обязателен' });
 
   try {
     // Проверяем, существует ли товар
-    const product = db.prepare('SELECT id FROM products WHERE id = ?').get(productId);
+    const product = db
+      .prepare('SELECT id FROM products WHERE id = ?')
+      .get(productId);
     if (!product) return res.status(404).json({ error: 'Товар не найден' });
 
     // Добавляем в избранное
-    db.prepare('INSERT OR IGNORE INTO favorites (user_id, product_id) VALUES (?, ?)').run(
-      userId,
-      productId
-    );
+    db.prepare(
+      'INSERT OR IGNORE INTO favorites (user_id, product_id) VALUES (?, ?)'
+    ).run(userId, productId);
 
     res.status(201).json({ message: 'Добавлено в избранное' });
   } catch (err) {
@@ -55,7 +57,9 @@ router.delete('/:productId', auth, (req, res) => {
   const { productId } = req.params;
 
   try {
-    db.prepare('DELETE FROM favorites WHERE user_id = ? AND product_id = ?').run(userId, productId);
+    db.prepare(
+      'DELETE FROM favorites WHERE user_id = ? AND product_id = ?'
+    ).run(userId, productId);
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: 'Ошибка удаления из избранного' });

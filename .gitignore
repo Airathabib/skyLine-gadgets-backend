@@ -64,6 +64,7 @@ build/
 
 # Server DB
 server/db/*.db
+db.json
 
 # Environment variables
 .env

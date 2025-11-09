@@ -27,15 +27,15 @@ router.get('/', (req, res) => {
 
     const rootComments: Comment[] = [];
     comments.forEach((comment) => {
-  if (comment.parent_id === null) {
-    rootComments.push(commentMap[comment.id]);
-  } else {
-    const parent = commentMap[comment.parent_id];
-    if (parent && parent.replies) { 
-      parent.replies.push(commentMap[comment.id]);
-    }
-  }
-});
+      if (comment.parent_id === null) {
+        rootComments.push(commentMap[comment.id]);
+      } else {
+        const parent = commentMap[comment.parent_id];
+        if (parent && parent.replies) {
+          parent.replies.push(commentMap[comment.id]);
+        }
+      }
+    });
 
     res.json(rootComments);
   } catch (err) {
