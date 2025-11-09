@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../utils/db.js';
 import { auth } from '../middleware/auth.js';
+import { CartItem, Product } from '../models/Product.js';
 
 const router = Router();
 
@@ -43,41 +44,48 @@ router.post('/', auth, (req, res) => {
 
   try {
     // Проверка существования товара
-    const product = db.prepare('SELECT id FROM products WHERE id = ?').get(productId);
+    const product = db
+      .prepare('SELECT id FROM products WHERE id = ?')
+      .get(productId) as Product | undefined;
     if (!product) {
       return res.status(404).json({ error: 'Товар не найден' });
     }
 
     // Текущее количество в корзине
     const currentCartItem = db
-      .prepare('SELECT quantity FROM cart_items WHERE user_id = ? AND product_id = ?')
-      .get(userId, productId);
+      .prepare(
+        'SELECT quantity FROM cart_items WHERE user_id = ? AND product_id = ?'
+      )
+      .get(userId, productId) as CartItem | undefined;
     const currentCartQty = currentCartItem ? currentCartItem.quantity : 0;
     const newCartQty = currentCartQty + delta;
 
     // Валидация
     if (newCartQty < 0) {
-      return res.status(400).json({ error: 'Нельзя удалить больше, чем в корзине' });
+      return res
+        .status(400)
+        .json({ error: 'Нельзя удалить больше, чем в корзине' });
     }
     if (newCartQty > product.quantity) {
-      return res.status(400).json({ error: `Недостаточно товара. Доступно: ${product.quantity}` });
+      return res
+        .status(400)
+        .json({ error: `Недостаточно товара. Доступно: ${product.quantity}` });
     }
 
     // Обновление корзины
     if (newCartQty === 0) {
-      db.prepare('DELETE FROM cart_items WHERE user_id = ? AND product_id = ?').run(
-        userId,
-        productId
-      );
+      db.prepare(
+        'DELETE FROM cart_items WHERE user_id = ? AND product_id = ?'
+      ).run(userId, productId);
     } else {
       if (currentCartItem) {
-        db.prepare('UPDATE cart_items SET quantity = ? WHERE user_id = ? AND product_id = ?').run(
-          newCartQty,
-          userId,
-          productId
-        );
+        db.prepare(
+          'UPDATE cart_items SET quantity = ? WHERE user_id = ? AND product_id = ?'
+        ).run(newCartQty, userId, productId);
       } else {
-        const newId = `cart_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        const newId = `cart_${Date.now()}_${Math.random()
+          .toString(36)
+          .slice(2, 9)}`;
         db.prepare(
           'INSERT INTO cart_items (id, user_id, product_id, quantity) VALUES (?, ?, ?, ?)'
         ).run(newId, userId, productId, newCartQty);
@@ -122,10 +130,9 @@ router.delete('/:productId', auth, (req, res) => {
     }
 
     // Удаляем
-    db.prepare('DELETE FROM cart_items WHERE user_id = ? AND product_id = ?').run(
-      userId,
-      productId
-    );
+    db.prepare(
+      'DELETE FROM cart_items WHERE user_id = ? AND product_id = ?'
+    ).run(userId, productId);
 
     // Возвращаем обновлённую корзину
     const cartItems = db

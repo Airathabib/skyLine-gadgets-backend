@@ -1,55 +1,53 @@
-// server/utils/validation.ts
-import { ZodError } from 'zod';
+import { ZodError, ZodSchema } from 'zod';
 import { Request, Response, NextFunction } from 'express';
 
-export const validateBody = (schema: any) => {
+declare global {
+  namespace Express {
+    interface Request {
+      validatedQuery?: any;
+    }
+  }
+}
+
+export const validateBody = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Защита от не-объектов
-      if (!req.body || typeof req.body !== 'object') {
-        return res
-          .status(400)
-          .json({ error: 'Тело запроса должно быть JSON-объектом' });
-      }
       req.body = schema.parse(req.body);
       next();
     } catch (error) {
-      // Только если это ZodError — обрабатываем детали
-      if (error instanceof ZodError && Array.isArray(error.errors)) {
-        const errors = error.errors.map((err) => ({
-          path: err.path.join('.'),
-          message: err.message,
+      if (error instanceof ZodError) {
+        // У ZodError есть свойство issues, а не errors!
+        const errors = error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
         }));
         return res
           .status(400)
           .json({ error: 'Ошибка валидации', details: errors });
       }
-
-      // Любая другая ошибка — логируем и возвращаем 500
-      console.error('Ошибка валидации (не Zod):', error);
       res.status(500).json({ error: 'Ошибка сервера' });
     }
   };
 };
 
-export const validateQuery = (schema: any) => {
+export const validateQuery = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      req.query = schema.parse(req.query);
+      const parsed = schema.parse(req.query);
+      req.validatedQuery = parsed; // ← сохраняем в отдельное поле
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const errors = error.errors.map((err) => ({
-          path: err.path.join('.'),
-          message: err.message,
+        const errors = error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
         }));
-        res.status(400).json({
+        return res.status(400).json({
           error: 'Ошибка валидации параметров',
           details: errors,
         });
-      } else {
-        res.status(500).json({ error: 'Внутренняя ошибка' });
       }
+      return res.status(500).json({ error: 'Внутренняя ошибка' });
     }
   };
 };

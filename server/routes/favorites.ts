@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../utils/db.js';
 import { auth } from '../middleware/auth.js';
+import { Product } from '../models/Product.js';
 
 const router = Router();
 

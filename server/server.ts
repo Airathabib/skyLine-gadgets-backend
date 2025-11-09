@@ -13,7 +13,7 @@ import brandsRouter from './routes/brands.js';
 import db from './utils/db.js';
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 
 app.use(helmet());
 app.use(cors());

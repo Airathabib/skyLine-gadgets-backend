@@ -6,9 +6,33 @@ export interface Product {
   title: string;
   description: string;
   price: number;
-  addedToCart: boolean;
+  like: number;
+  addedToCart: number;
   accum: string;
   memory: string;
-  photo?: string;
+  photo: string;
   rating: number;
+}
+
+export interface Brand {
+  name: string;
+}
+
+export interface BrandCountResult {
+  cnt: number;
+}
+
+export interface Rating {
+  id: number;
+  user_id: number;
+  product_id: string;
+  rating: number;
+}
+
+export interface AvgRating {
+  average: number | null;
+  count: number;
+}
+export interface CartItem {
+  quantity: number;
 }

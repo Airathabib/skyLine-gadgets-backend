@@ -26,7 +26,7 @@ if (Array.isArray(dbJson.products) && dbJson.products.length > 0) {
     try {
       // Для товаров
       insertProduct.run(
-        String(p.id), // ← приводим к строке!
+        String(p.id), 
         p.brand,
         p.category,
         p.quantity || 1,

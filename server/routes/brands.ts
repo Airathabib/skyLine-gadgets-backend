@@ -1,6 +1,7 @@
 // server/routes/brands.ts
 import { Router } from 'express';
 import db from '../utils/db.js';
+import { Brand, BrandCountResult } from '../models/Product.js';
 import { auth, adminOnly } from '../middleware/auth.js';
 
 const router = Router();
@@ -8,8 +9,8 @@ const router = Router();
 // GET /api/brands — публичный
 router.get('/', (req, res) => {
   try {
-    const brands = db.prepare('SELECT name FROM brands').all();
-    res.json(brands.map(b => b.name));
+    const brands = db.prepare('SELECT name FROM brands').all() as Brand[];
+    res.json(brands.map((b) => b.name));
   } catch (err) {
     res.status(500).json({ error: 'Ошибка загрузки брендов' });
   }
@@ -34,14 +35,23 @@ router.post('/', auth, adminOnly, (req, res) => {
 // DELETE /api/brands/:name — только для админа
 router.delete('/:name', auth, adminOnly, (req, res) => {
   const { name } = req.params;
+
   try {
-    const count = db.prepare('SELECT COUNT(*) as cnt FROM products WHERE brand = ?').get(name).cnt;
-    if (count > 0) {
-      return res.status(400).json({ error: 'Нельзя удалить бренд, пока есть товары' });
+    // Явно типизируем результат
+    const countResult = db
+      .prepare('SELECT COUNT(*) as cnt FROM products WHERE brand = ?')
+      .get(name) as { cnt: number };
+
+    if (countResult.cnt > 0) {
+      return res
+        .status(400)
+        .json({ error: 'Нельзя удалить бренд, пока есть товары' });
     }
+
     db.prepare('DELETE FROM brands WHERE name = ?').run(name);
     res.status(204).send();
   } catch (err) {
+    console.error('Ошибка удаления бренда:', err);
     res.status(500).json({ error: 'Ошибка удаления бренда' });
   }
 });
