@@ -2,10 +2,14 @@ import Database from 'better-sqlite3';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
+import { mkdirSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const dbPath = path.resolve(__dirname, '../../db/shop.db');
+
+const dbDir = path.dirname(dbPath);
+mkdirSync(dbDir, { recursive: true });
 
 const db = new Database(dbPath);
 
