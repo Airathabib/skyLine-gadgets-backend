@@ -13,10 +13,11 @@ import brandsRouter from './routes/brands.js';
 import db from './utils/db.js';
 
 const app = express();
+app.use(cors());
+
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 
 app.use(helmet());
-app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 
