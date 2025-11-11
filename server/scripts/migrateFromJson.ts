@@ -24,9 +24,9 @@
 //   let count = 0;
 //   for (const p of dbJson.products) {
 //     try {
-      
+
 //       insertProduct.run(
-//         String(p.id), 
+//         String(p.id),
 //         p.brand,
 //         p.category,
 //         p.quantity || 1,

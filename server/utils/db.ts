@@ -21,7 +21,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     brand TEXT NOT NULL,
     category TEXT NOT NULL,
-    quantity INTEGER NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 0,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     price REAL NOT NULL,
