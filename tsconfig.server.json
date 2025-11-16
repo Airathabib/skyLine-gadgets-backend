@@ -2,8 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "target": "es2022",
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
+    "module": "nodeNext",
+    "moduleResolution": "nodeNext",
     "outDir": "./dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
