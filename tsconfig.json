@@ -10,8 +10,7 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "noEmit": false,
-    "types": ["node"]
+    "noEmit": false
   },
   "include": ["server/**/*"],
   "exclude": ["node_modules", "dist"]
