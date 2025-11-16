@@ -17,7 +17,7 @@
 // if (Array.isArray(dbJson.products) && dbJson.products.length > 0) {
 //   const insertProduct = db.prepare(`
 //     INSERT OR IGNORE INTO products (
-//       id, brand, category, quantity, title, description, price, addedToCart, accum, memory, photo, rating
+//       id, brand, category, quantity, title, description, price, accum, memory, photo, rating
 //     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 //   `);
 
@@ -33,7 +33,6 @@
 //         p.title,
 //         p.description,
 //         Number(p.price),
-//         p.addedToCart ? 1 : 0,
 //         p.accum || '',
 //         p.memory || '',
 //         p.photo || '',

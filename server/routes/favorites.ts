@@ -4,23 +4,21 @@ import { auth } from '../middleware/auth.js';
 
 const router = Router();
 
-// GET /api/favorites — получить избранное текущего пользователя
-router.get('/', auth, (req, res) => {
+router.get('/', auth, async (req, res) => {
   const userId = (req as any).user.id;
   try {
-    const favorites = db
-      .prepare(
-        `
-    SELECT 
-      p.id, p.brand, p.category, p.title, p.description, p.price,
-      p.accum, p.memory, p.photo, p.rating,
-      p.quantity as stockQuantity
-    FROM favorites f
-    LEFT JOIN products p ON f.product_id = p.id
-    WHERE f.user_id = ? AND p.id IS NOT NULL
-  `
-      )
-      .all(userId);
+    const { rows: favorites } = await db.query(
+      `
+      SELECT 
+        p.id, p.brand, p.category, p.title, p.description, p.price,
+        p.accum, p.memory, p.photo, p.rating,
+        p.quantity
+      FROM favorites f
+      LEFT JOIN products p ON f.productId = p.id
+      WHERE f.userId = $1 AND p.id IS NOT NULL
+      `,
+      [userId]
+    );
     res.json(favorites);
   } catch (err) {
     console.error('Ошибка избранного:', err);
@@ -28,40 +26,46 @@ router.get('/', auth, (req, res) => {
   }
 });
 
-// POST /api/favorites — добавить в избранное
-router.post('/', auth, (req, res) => {
+router.post('/', auth, async (req, res) => {
   const userId = (req as any).user.id;
   const { productId } = req.body;
 
-  if (!productId)
+  if (!productId) {
     return res.status(400).json({ error: 'productId обязателен' });
+  }
 
   try {
-    const product = db
-      .prepare('SELECT id FROM products WHERE id = ?')
-      .get(productId);
-    if (!product) return res.status(404).json({ error: 'Товар не найден' });
+    const productRes = await db.query('SELECT id FROM products WHERE id = $1', [
+      productId,
+    ]);
+    if (productRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Товар не найден' });
+    }
 
-    db.prepare(
-      'INSERT OR IGNORE INTO favorites (user_id, product_id) VALUES (?, ?)'
-    ).run(userId, productId);
+    await db.query(
+      'INSERT INTO favorites (userId, productId) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [userId, productId]
+    );
 
     res.status(201).json({ message: 'Добавлено в избранное' });
   } catch (err) {
+    console.error('Ошибка добавления в избранное:', err);
     res.status(500).json({ error: 'Ошибка добавления в избранное' });
   }
 });
 
-router.delete('/:productId', auth, (req, res) => {
+router.delete('/:productId', auth, async (req, res) => {
   const userId = (req as any).user.id;
   const { productId } = req.params;
 
   try {
-    db.prepare(
-      'DELETE FROM favorites WHERE user_id = ? AND product_id = ?'
-    ).run(userId, productId);
+    await db.query(
+      'DELETE FROM favorites WHERE userId = $1 AND productId = $2',
+      [userId, productId]
+    );
     res.status(204).send();
   } catch (err) {
+    console.error('Ошибка удаления из избранного:', err);
     res.status(500).json({ error: 'Ошибка удаления из избранного' });
   }
 });

@@ -1,54 +1,53 @@
 // server/routes/brands.ts
 import { Router } from 'express';
 import db from '../utils/db.js';
-import { Brand, BrandCountResult } from '../models/Product.js';
 import { auth, adminOnly } from '../middleware/auth.js';
 
 const router = Router();
 
-// GET /api/brands — публичный
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const brands = db.prepare('SELECT name FROM brands').all() as Brand[];
-    res.json(brands.map((b) => b.name));
+    const { rows } = await db.query('SELECT name FROM brands ORDER BY name');
+    res.json(rows.map((b: any) => b.name));
   } catch (err) {
+    console.error('Ошибка загрузки брендов:', err);
     res.status(500).json({ error: 'Ошибка загрузки брендов' });
   }
 });
 
-// POST /api/brands — только для админа
-router.post('/', auth, adminOnly, (req, res) => {
+router.post('/', auth, adminOnly, async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Имя бренда обязательно' });
 
   try {
-    db.prepare('INSERT INTO brands (name) VALUES (?)').run(name);
+    await db.query('INSERT INTO brands (name) VALUES ($1)', [name]);
     res.status(201).json({ name });
-  } catch (err) {
-    if ((err as any).code === 'SQLITE_CONSTRAINT_UNIQUE') {
+  } catch (err: any) {
+    if (err.code === '23505') {
       return res.status(409).json({ error: 'Бренд уже существует' });
     }
+    console.error('Ошибка добавления бренда:', err);
     res.status(500).json({ error: 'Ошибка добавления бренда' });
   }
 });
 
-// DELETE /api/brands/:name — только для админа
-router.delete('/:name', auth, adminOnly, (req, res) => {
+router.delete('/:name', auth, adminOnly, async (req, res) => {
   const { name } = req.params;
 
   try {
-    // Явно типизируем результат
-    const countResult = db
-      .prepare('SELECT COUNT(*) as cnt FROM products WHERE brand = ?')
-      .get(name) as { cnt: number };
+    const countResult = await db.query(
+      'SELECT COUNT(*) as cnt FROM products WHERE brand = $1',
+      [name]
+    );
 
-    if (countResult.cnt > 0) {
+    const count = parseInt(countResult.rows[0].cnt);
+    if (count > 0) {
       return res
         .status(400)
         .json({ error: 'Нельзя удалить бренд, пока есть товары' });
     }
 
-    db.prepare('DELETE FROM brands WHERE name = ?').run(name);
+    await db.query('DELETE FROM brands WHERE name = $1', [name]);
     res.status(204).send();
   } catch (err) {
     console.error('Ошибка удаления бренда:', err);

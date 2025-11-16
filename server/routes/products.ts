@@ -1,11 +1,8 @@
-// server/routes/products.ts
 import { Router } from 'express';
-import { Request, Response } from 'express';
 import db from '../utils/db.js';
 import { validateBody } from '../utils/validation.js';
 import {
   createProductSchema,
-  toggleLikeSchema,
   updateProductSchema,
 } from '../schemas/productSchema.js';
 import { auth, adminOnly } from '../middleware/auth.js';
@@ -15,78 +12,94 @@ const router = Router();
 const transformProduct = (product: any) => {
   return {
     ...product,
-    addedToCart: Boolean(product.addedToCart),
+    quantity: Number(product.quantity),
+    price: Number(product.price),
+    rating: Number(product.rating),
   };
 };
 
-// Вспомогательная функция для SELECT-запроса
-const selectProductFields = `
-  id, brand, category, title, description, price, addedToCart, accum, memory, photo, rating,
-  quantity as stockQuantity
-`;
+const buildWhereClause = (query: any) => {
+  const { q, category, price_gte, price_lte } = query;
+  const conditions: string[] = [];
+  const params: any[] = [];
+  let index = 1;
 
-// GET /api/products с поддержкой фильтрации
-router.get('/', (req, res) => {
+  if (q) {
+    conditions.push(`(title ILIKE $${index} OR description ILIKE $${index})`);
+    params.push(`%${q}%`);
+    index++;
+  }
+
+  if (category) {
+    conditions.push(`category = $${index}`);
+    params.push(category);
+    index++;
+  }
+
+  if (price_gte != null) {
+    conditions.push(`price >= $${index}`);
+    params.push(Number(price_gte));
+    index++;
+  }
+
+  if (price_lte != null) {
+    conditions.push(`price <= $${index}`);
+    params.push(Number(price_lte));
+    index++;
+  }
+
+  const whereClause = conditions.length
+    ? `WHERE ${conditions.join(' AND ')}`
+    : '';
+  return { whereClause, params };
+};
+
+router.get('/', async (req, res) => {
   try {
-    const { q, category, _sort, _order, price_gte, price_lte } = req.query;
+    const { whereClause, params } = buildWhereClause(req.query);
+    let sql = `SELECT id, brand, category, title, description, price, 
+                      accum, memory, photo, rating, quantity 
+               FROM products ${whereClause}`;
 
-    let sql = `SELECT ${selectProductFields} FROM products WHERE 1 = 1`;
-    const params: any[] = [];
-
-    // Фильтр по категории
-    if (category) {
-      sql += ` AND category = ?`;
-      params.push(category);
-    }
-
-    // Фильтр по цене
-    if (price_gte) {
-      sql += ` AND price >= ?`;
-      params.push(Number(price_gte));
-    }
-    if (price_lte) {
-      sql += ` AND price <= ?`;
-      params.push(Number(price_lte));
-    }
-
-    // Сортировка
+    const { _sort, _order } = req.query;
     if (_sort === 'price' && (_order === 'asc' || _order === 'desc')) {
       sql += ` ORDER BY price ${_order.toUpperCase()}`;
     }
 
-    const stmt = db.prepare(sql);
-    const products = stmt.all(...params);
-    res.json(products.map(transformProduct));
+    const { rows } = await db.query(sql, params);
+    res.json(rows.map(transformProduct));
   } catch (err) {
-    console.error(err);
+    console.error('Ошибка загрузки товаров:', err);
     res.status(500).json({ error: 'Ошибка при загрузке товаров' });
   }
 });
 
-// GET /api/products/:id
-router.get('/:id', (req: Request, res: Response) => {
-  const { id } = req.params;
+router.get('/:id', async (req, res) => {
   try {
-    const product = db
-      .prepare(`SELECT ${selectProductFields} FROM products WHERE id = ?`)
-      .get(id);
-    if (!product) {
+    const { rows } = await db.query(
+      `SELECT id, brand, category, title, description, price,
+              accum, memory, photo, rating, quantity
+       FROM products WHERE id = $1`,
+      [req.params.id]
+    );
+
+    if (rows.length === 0) {
       return res.status(404).json({ error: 'Товар не найден' });
     }
-    res.json(transformProduct(product));
+
+    res.json(transformProduct(rows[0]));
   } catch (err) {
-    console.error('Ошибка при получении товара:', err);
+    console.error('Ошибка получения товара:', err);
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 });
 
-// POST /api/products
 router.post(
   '/',
   auth,
   adminOnly,
   validateBody(createProductSchema),
-  (req, res) => {
+  async (req, res) => {
     const {
       id,
       brand,
@@ -95,60 +108,42 @@ router.post(
       title,
       description,
       price,
-      addedToCart = false,
       accum,
       memory,
       photo,
       rating = 0,
     } = req.body;
 
-    if (!id || !title || price == null) {
-      return res
-        .status(400)
-        .json({ error: 'Обязательные поля: id, title, price' });
-    }
-
     try {
-      const stmt = db.prepare(`
-      INSERT INTO products (id, brand, category, quantity, title, description, price,  addedToCart, accum, memory, photo, rating)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-      stmt.run(
-        id,
-        brand,
-        category,
-        quantity,
-        title,
-        description,
-        price,
-        addedToCart ? 1 : 0,
-        accum,
-        memory,
-        photo.trim(),
-        rating
+      const { rows } = await db.query(
+        `INSERT INTO products (
+        id, brand, category, quantity, title, description, price,
+        accum, memory, photo, rating
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *`,
+        [
+          id,
+          brand,
+          category,
+          quantity,
+          title,
+          description,
+          price,
+          accum,
+          memory,
+          photo.trim() || '',
+          rating,
+        ]
       );
-      res.status(201).json({
-        id,
-        brand,
-        category,
-        quantity,
-        title,
-        description,
-        price,
-        addedToCart,
-        accum,
-        memory,
-        photo,
-        rating,
-      });
+
+      res.status(201).json(transformProduct(rows[0]));
     } catch (err) {
-      console.error('Ошибка создания товара:', err); // ← добавь это
+      console.error('Ошибка создания товара:', err);
       res.status(500).json({ error: 'Ошибка при создании товара' });
     }
   }
 );
 
-// PUT /api/products/:id
 router.put(
   '/:id',
   auth,
@@ -163,7 +158,6 @@ router.put(
       title,
       description,
       price,
-      addedToCart,
       accum,
       memory,
       photo,
@@ -171,67 +165,56 @@ router.put(
     } = req.body;
 
     try {
-      const existing = db
-        .prepare('SELECT * FROM products WHERE id = ?')
-        .get(id);
-      if (!existing) return res.status(404).json({ error: 'Товар не найден' });
+      const { rowCount } = await db.query(
+        'SELECT 1 FROM products WHERE id = $1',
+        [id]
+      );
+      if (rowCount === 0) {
+        return res.status(404).json({ error: 'Товар не найден' });
+      }
 
-      const stmt = db.prepare(`
-      UPDATE products
-      SET brand = ?, category = ?, quantity = ?, title = ?, description = ?, price = ?, addedToCart = ?, accum = ?, memory = ?, photo = ?, rating = ?
-      WHERE id = ?
-    `);
-      stmt.run(
-        brand,
-        category,
-        quantity,
-        title,
-        description,
-        price,
-        addedToCart,
-        accum,
-        memory,
-        photo,
-        rating,
-        id
+      const { rows } = await db.query(
+        `UPDATE products SET
+        brand = $1, category = $2, quantity = $3, title = $4,
+        description = $5, price = $6, accum = $7, memory = $8,
+        photo = $9, rating = $10
+       WHERE id = $11
+       RETURNING *`,
+        [
+          brand,
+          category,
+          quantity,
+          title,
+          description,
+          price,
+          accum,
+          memory,
+          photo?.trim() || '',
+          rating,
+          id,
+        ]
       );
 
-      const updated = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
-      res.json(updated);
+      res.json(transformProduct(rows[0]));
     } catch (err) {
+      console.error('Ошибка обновления товара:', err);
       res.status(500).json({ error: 'Ошибка при обновлении товара' });
     }
   }
 );
 
-// PATCH /api/products/:id
-router.patch('/:id', validateBody(toggleLikeSchema), async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
-    if (!existing) return res.status(404).json({ error: 'Товар не найден' });
-
-    const updated = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
-    res.json(transformProduct(updated));
-  } catch (err) {
-    res.status(500).json({ error: 'Ошибка обновления like' });
-  }
-});
-
-// DELETE /api/products/:id
 router.delete('/:id', auth, adminOnly, async (req, res) => {
-  const { id } = req.params;
   try {
-    const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
-    if (!existing) return res.status(404).json({ error: 'Товар не найден' });
-
-    db.prepare('DELETE FROM products WHERE id = ?').run(id);
+    const { rowCount } = await db.query('DELETE FROM products WHERE id = $1', [
+      req.params.id,
+    ]);
+    if (rowCount === 0) {
+      return res.status(404).json({ error: 'Товар не найден' });
+    }
     res.status(204).send();
-    return; // ← явно завершаем
   } catch (err) {
+    console.error('Ошибка удаления товара:', err);
     res.status(500).json({ error: 'Ошибка при удалении товара' });
-    return;
   }
 });
 

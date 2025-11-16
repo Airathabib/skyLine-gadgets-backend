@@ -1,4 +1,3 @@
-// server/middleware/auth.ts
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt.js';
 

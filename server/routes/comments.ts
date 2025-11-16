@@ -6,132 +6,154 @@ import {
   commentSchema,
   updateCommentSchema,
 } from '../schemas/commentSchema.js';
-import { Comment } from '../models/Comment.js';
 import { auth } from '../middleware/auth.js';
 
 const router = Router();
 
-// server/routes/comments.ts
-router.get('/', (req, res) => {
-  const { productId } = req.query;
-  try {
-    const comments = db
-      .prepare('SELECT * FROM comments WHERE productId = ? ORDER BY date DESC')
-      .all(productId) as Comment[];
+router.get('/', async (req, res) => {
+  const { productId } = req.query; // camelCase из URL
 
-    // Создаём типизированный маппинг
-    const commentMap: Record<number, Comment> = {};
-    comments.forEach((comment) => {
-      commentMap[comment.id] = { ...comment, replies: [] };
+  if (!productId) {
+    return res.status(400).json({ error: 'productId обязателен' });
+  }
+
+  try {
+    const { rows } = await db.query(
+      `SELECT id, user_id, parent_id, user_name, user_comment, date, product_id
+       FROM comments 
+       WHERE product_id = $1 
+       ORDER BY date DESC`,
+      [productId]
+    );
+
+    const commentsCamel = rows.map((row) => ({
+      id: row.id,
+      userId: row.user_id,
+      parentId: row.parent_id,
+      userName: row.user_name,
+      userComment: row.user_comment,
+      date: row.date,
+      productId: row.product_id,
+    }));
+
+    const map: Record<number, any> = {};
+    commentsCamel.forEach((c) => {
+      map[c.id] = { ...c, replies: [] };
     });
 
-    const rootComments: Comment[] = [];
-    comments.forEach((comment) => {
-      if (comment.parent_id === null) {
-        rootComments.push(commentMap[comment.id]);
+    const roots: any[] = [];
+    commentsCamel.forEach((c) => {
+      if (c.parentId === null) {
+        roots.push(map[c.id]);
       } else {
-        const parent = commentMap[comment.parent_id];
-        if (parent && parent.replies) {
-          parent.replies.push(commentMap[comment.id]);
-        }
+        const parent = map[c.parentId];
+        if (parent) parent.replies.push(map[c.id]);
       }
     });
 
-    res.json(rootComments);
+    res.json(roots);
   } catch (err) {
-    res.status(500).json({ error: 'Ошибка загрузки' });
-  }
-});
-
-// POST /api/comments — добавление (требует авторизации)
-router.post('/', auth, validateBody(commentSchema), (req, res) => {
-  const userId = (req as any).user.id;
-  const { userName, userComment, productId, parent_id } = req.body;
-
-  try {
-    const date = new Date().toISOString();
-    const stmt = db.prepare(`
-      INSERT INTO comments (user_id, parent_id, userName, userComment, date, productId)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    const info = stmt.run(
-      userId,
-      parent_id || null,
-      userName,
-      userComment,
-      date,
-      productId
-    );
-    const newComment = db
-      .prepare('SELECT * FROM comments WHERE id = ?')
-      .get(info.lastInsertRowid);
-    res.status(201).json(newComment);
-  } catch (err) {
-    console.error('Ошибка добавления комментария:', err);
-    res.status(500).json({ error: 'Ошибка добавления комментария' });
-  }
-});
-
-// PATCH /api/comments/:id — редактирование (только автор)
-router.patch('/:id', auth, validateBody(updateCommentSchema), (req, res) => {
-  const userId = (req as any).user.id;
-  const { id } = req.params;
-  const { userComment } = req.body;
-
-  try {
-    // 1. Проверяем, существует ли комментарий
-    const comment = db
-      .prepare('SELECT id, user_id FROM comments WHERE id = ?')
-      .get(id) as Comment | undefined;
-
-    if (!comment) {
-      return res.status(404).json({ error: 'Комментарий не найден' });
-    }
-
-    // 2. Проверяем, является ли пользователь автором
-    if (comment.user_id !== userId) {
-      return res.status(403).json({ error: 'Нет прав на редактирование' });
-    }
-
-    // 3. Обновляем комментарий
-    const newDate = new Date().toISOString();
-    db.prepare(
-      'UPDATE comments SET userComment = ?, date = ? WHERE id = ?'
-    ).run(userComment, newDate, id);
-
-    // 4. Возвращаем обновлённый комментарий
-    const updatedComment = db
-      .prepare('SELECT * FROM comments WHERE id = ?')
-      .get(id);
-
-    res.json(updatedComment);
-  } catch (err) {
-    console.error('Ошибка редактирования комментария:', err);
+    console.error('Ошибка загрузки:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// DELETE /api/comments/:id — удаление (автор или админ)
-router.delete('/:id', auth, (req, res) => {
+router.post('/', auth, validateBody(commentSchema), async (req, res) => {
+  const userId = (req as any).user.id;
+  const { userName, userComment, productId, parentId } = req.body; // camelCase
+
+  try {
+    const date = new Date().toISOString();
+    const { rows } = await db.query(
+      `INSERT INTO comments (user_id, parent_id, user_name, user_comment, date, product_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, user_id, parent_id, user_name, user_comment, date, product_id`,
+      [userId, parentId || null, userName, userComment, date, productId]
+    );
+
+    const saved = rows[0];
+    res.status(201).json({
+      id: saved.id,
+      userId: saved.user_id,
+      parentId: saved.parent_id,
+      userName: saved.user_name,
+      userComment: saved.user_comment,
+      date: saved.date,
+      productId: saved.product_id,
+    });
+  } catch (err) {
+    console.error('Ошибка создания:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+router.patch(
+  '/:id',
+  auth,
+  validateBody(updateCommentSchema),
+  async (req, res) => {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+    const { userComment } = req.body; // camelCase
+
+    try {
+      const { rows: commentRows } = await db.query(
+        'SELECT id, user_id FROM comments WHERE id = $1',
+        [id]
+      );
+
+      if (!commentRows.length) {
+        return res.status(404).json({ error: 'Не найден' });
+      }
+      if (commentRows[0].user_id !== userId) {
+        return res.status(403).json({ error: 'Нет прав' });
+      }
+
+      const newDate = new Date().toISOString();
+      const { rows } = await db.query(
+        'UPDATE comments SET user_comment = $1, date = $2 WHERE id = $3 RETURNING *',
+        [userComment, newDate, id]
+      );
+
+      const updated = rows[0];
+      res.json({
+        id: updated.id,
+        userId: updated.user_id,
+        parentId: updated.parent_id,
+        userName: updated.user_name,
+        userComment: updated.user_comment,
+        date: updated.date,
+        productId: updated.product_id,
+      });
+    } catch (err) {
+      console.error('Ошибка обновления:', err);
+      res.status(500).json({ error: 'Ошибка сервера' });
+    }
+  }
+);
+
+router.delete('/:id', auth, async (req, res) => {
   const userId = (req as any).user.id;
   const userRole = (req as any).user.role;
   const { id } = req.params;
 
   try {
-    const comment = db
-      .prepare('SELECT user_id FROM comments WHERE id = ?')
-      .get(id) as Comment | undefined;
-    if (!comment)
-      return res.status(404).json({ error: 'Комментарий не найден' });
+    const { rows } = await db.query(
+      'SELECT user_id FROM comments WHERE id = $1',
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Не найден' });
+
+    const comment = rows[0];
     if (comment.user_id !== userId && userRole !== 'admin') {
-      return res.status(403).json({ error: 'Нет прав на удаление' });
+      return res.status(403).json({ error: 'Нет прав' });
     }
 
-    db.prepare('DELETE FROM comments WHERE id = ?').run(id);
+    await db.query('DELETE FROM comments WHERE id = $1', [id]);
     res.status(204).send();
   } catch (err) {
-    res.status(500).json({ error: 'Ошибка удаления' });
+    console.error('Ошибка удаления:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
-
 export default router;

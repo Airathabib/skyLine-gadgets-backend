@@ -1,9 +1,9 @@
 export interface Comment {
   id: number;
-  user_id: number;
+  userId: number;
   parent_id: number | null;
-  userName: string;
-  userComment: string;
+  user_name: string;
+  user_comment: string;
   date: string;
   productId: string;
   replies?: Comment[];

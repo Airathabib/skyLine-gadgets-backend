@@ -6,8 +6,6 @@ export interface Product {
   title: string;
   description: string;
   price: number;
-  like: number;
-  addedToCart: number;
   accum: string;
   memory: string;
   photo: string;
@@ -24,7 +22,7 @@ export interface BrandCountResult {
 
 export interface Rating {
   id: number;
-  user_id: number;
+  userId: number;
   product_id: string;
   rating: number;
 }
