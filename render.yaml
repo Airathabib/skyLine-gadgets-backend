@@ -1,5 +1,5 @@
 services:
-  - type: web
+    type: web
     name: skyline-gadgets-backend
     env: node
     region: frankfurt
@@ -7,5 +7,9 @@ services:
     buildCommand: 'npm run build'
     startCommand: 'npm start'
     envVars:
-      - key: NODE_VERSION
+        key: NPM_CONFIG_PRODUCTION
+        value: 'false'
+        key: NODE_ENV
+        value: 'production'
+        key: NODE_VERSION
         value: '18'

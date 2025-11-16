@@ -13,6 +13,7 @@ import favoritesRouter from './routes/favorites.js';
 import ratingsRouter from './routes/ratings.js';
 import brandsRouter from './routes/brands.js';
 import { seed } from './seeds/seed.js';
+import resetDataRouter from './routes/resetData.js';
 
 const startServer = async () => {
   // В dev-режиме: всегда пересоздаём БД из seed
@@ -30,11 +31,12 @@ const startServer = async () => {
   app.use('/api/products', productsRouter);
   app.use('/api/comments', commentsRouter);
   app.use('/api/auth', authRouter);
-  app.use('/api/users', authRouter); // ← возможно, избыточно, но допустимо
+  app.use('/api/users', authRouter);
   app.use('/api/cart', cartRouter);
   app.use('/api/favorites', favoritesRouter);
   app.use('/api/ratings', ratingsRouter);
-  app.use('/api/brands', brandsRouter); // ✅ только этот роут для брендов
+  app.use('/api/brands', brandsRouter);
+  app.use('/api', resetDataRouter);
 
   app.use((req, res) => {
     res.status(404).json({ error: 'Маршрут не найден' });
