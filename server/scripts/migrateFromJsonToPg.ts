@@ -1,6 +1,6 @@
 import { Client } from 'pg';
 import bcrypt from 'bcrypt';
-import dbJsonRaw from '../../db.json' assert { type: 'json' };
+import dbJsonRaw from '../../db.json' with { type: 'json' };
 import type { DbJson } from './dbJsonTypes.js';
 
 const dbJson = dbJsonRaw as DbJson;
