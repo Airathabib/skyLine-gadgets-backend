@@ -2,18 +2,24 @@ import { Pool } from 'pg';
 import dotenv from 'dotenv';
 
 dotenv.config();
-// Используем DATABASE_URL из среды (Render задаст его автоматически)
-// Локально — подставь свой URL
-// const DATABASE_URL =
-//   process.env.DATABASE_URL ||
-//   'postgres://postgres:qwerty@localhost:5432/skyline_gadgets';
 
 const DATABASE_URL =
-  process.env.DATABASE_URL || 'postgres://localhost:5432/skyline_gadgets';
+  process.env.DATABASE_URL ||
+  (process.env.NODE_ENV !== 'production'
+    ? 'postgres://localhost:5432/skyline_gadgets'
+    : undefined);
+
+if (!DATABASE_URL) {
+  throw new Error('❌ DATABASE_URL required in production!');
+}
+
+if (!DATABASE_URL) {
+  throw new Error('❌ Переменная DATABASE_URL не задана!');
+}
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
-  // Для Render — включаем SSL
+
   ssl:
     process.env.NODE_ENV === 'production'
       ? { rejectUnauthorized: false }
