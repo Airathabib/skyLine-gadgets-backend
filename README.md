@@ -1,66 +1,207 @@
-SkyLine Gadgets — это учебный бэкенд интернет-магазина электроники на Node.js, Express и PostgreSQL.
+📄 SkyLine Gadgets — Бэкенд (Локальный запуск)
+
+## Учебный проект: бэкенд интернет-магазина электроники на Node.js + Express + PostgreSQL.
 
 🚀 Возможности
-📦 REST API для управления товарами, пользователями, комментариями, корзиной и рейтингами
-🔐 Авторизация через JWT
-🛡️ Защита эндпоинтов (обычные пользователи vs админ)
-🔄 Инициализация данных из db.json → PostgreSQL
-🗑️ Каскадное удаление (пользователь → комментарии, корзина и т.д.)
-⭐ Система рейтингов (целочисленная оценка 1–5, среднее значение с дробной частью)
-💬 Комментарии с поддержкой вложенных ответов
-🛒 Управление корзиной с учётом остатков на складе
+
+Фича | Описание
+
+📦 REST API | Товары, пользователи, комментарии, корзина, рейтинги, избранное
+
+🔐 JWT-авторизация | Регистрация, вход, защита эндпоинтов
+
+🛡️ Роли | Обычный пользователь / администратор
+
+🔄 Seed-данные | Инициализация БД из db.json одной командой
+
+🗑️ Каскадное удаление | Удаление пользователя → очистка связанных данных
+
+⭐ Рейтинги | Целочисленные оценки 1–5, расчёт среднего с дробной частью
+
+💬 Комментарии | Поддержка вложенных ответов (дерево)
+
+🛒 Корзина | Учёт остатков на складе, добавление/удаление товаров
+
 🛠️ Технологии
-Node.js + Express
-PostgreSQL — облачная реляционная БД (через драйвер pg)
-Zod — валидация входящих данных
-bcrypt — хэширование паролей
-jsonwebtoken — токены для авторизации
 
-🗂️ Структура
+• Node.js + Express
+• PostgreSQL (локально или облачно)
+• pg — драйвер для PostgreSQL
+• Zod — валидация входящих данных
+• bcrypt — хэширование паролей
+• jsonwebtoken — JWT-токены
+• TypeScript — строгая типизация
 
-server/
-├── routes/ # Роутеры (товары, пользователи, комментарии и т.д.)
-├── utils/ # Подключение к БД, JWT, вспомогательные функции
-├── schemas/ # Схемы валидации (Zod)
-├── middleware/ # Аутентификация и права доступа
-├── seeds/ # Инициализация БД из db.json (seed.ts)
-├── scripts/ # Вспомогательные скрипты (reset.ts)
-└── db.json # Исходные данные для загрузки
+🗂️ Структура проекта
 
-💡 Файл shop.db не используется — проект полностью перешёл на PostgreSQL.
+skyLine-gadgets-backend/
+├── server/
+│ ├── routes/ # Роутеры: products, users, cart, ratings...
+│ ├── utils/ # Подключение к БД, JWT, хелперы
+│ ├── schemas/ # Zod-схемы валидации
+│ ├── middleware/ # auth, validateBody, validateQuery
+│ ├── seeds/ # seed.ts — инициализация БД
+│ ├── scripts/ # reset.ts — сброс и заполнение БД
+│ └── server.ts # Точка входа
+├── db.json # Исходные данные для seed
+├── .env # Переменные окружения (не в git!)
+├── package.json
+└── README.md
 
-📦 Установка и запуск (локально)
+📦 Локальная установка и запуск
 
-1. Перейдите в папку server //cd server
-2. Установите зависимости // npm install
-3. Настройте подключение к PostgreSQL: //Создайте файл .env: DATABASE_URL=postgresql://username:password@localhost:5432/skyline_gadgets
-4. Запустите сервер: // npm run devПри первом запуске:
+🔹 Шаг 1: Клонирование и установка зависимостей
 
-БД не создаётся автоматически — убедитесь, что база существует в PostgreSQL
-Чтобы инициализировать данные, выполните вручную: // npm run reset
-→ Это создаст таблицы и загрузит данные из db.json
-API будет доступно по адресу:
-👉 http://localhost:3001
+# Перейди в папку проекта
 
-📄 server/README.md
-🖥️ SkyLine Gadgets — Бэкенд
+cd skyLine-gadgets-backend
 
-☁️ Деплой на Render
-Бэкенд задеплоен как Web Service
-База данных — PostgreSQL на Render
-Используется Internal Database URL для безопасного подключения
-При деплое данные НЕ сбрасываются — seed() не вызывается автоматически
-Чтобы сбросить данные вручную:
-Зайдите в Render Dashboard → ваш Web Service
-Откройте Console
-Выполните: npm run reset
+# Установи зависимости
 
-👤 Учётные записи по умолчанию
-Роль - Администратор Логин - admin пароль - admin123
-Роль - Пользователь Логин - john пароль - qwerty
-📝 Лицензия
-Проект предназначен исключительно для образовательных целей и распространяется по лицензии MIT.
+npm install
+
+🔹 Шаг 2: Установи PostgreSQL (если ещё нет)
+
+# Вариант A: Официальный установщик (рекомендуется)
+
+Скачай с postgresql.org/download/windows
+Запусти установщик от имени администратора
+На этапе Password запомни пароль (например, postgres)
+Порт оставь 5432, локаль — UTF8
+Вариант B: Docker (быстро и чисто)
+
+# Вариант B: Docker (быстро и чисто)
+
+docker run --name skyline-pg \
+ -e POSTGRES_DB=skyline_gadgets \
+ -e POSTGRES_PASSWORD=postgres \
+ -p 5432:5432 \
+ -d postgres:16
+
+**После этого у тебя будет PostgreSQL на localhost:5432 с БД skyline_gadgets и паролем postgres.**
+
+🔹 Шаг 3: Настрой подключение к БД
+Создай файл .env в корне проекта:
+
+# .env
+
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/skyline_gadgets
+NODE_ENV=development
+JWT_SECRET=my_strong_jwt_secret_123!
+PORT=3001
+
+**🔑 Замени postgres:postgres на твой*логин:твой*пароль, если они другие.**
+
+🔹 Шаг 4: Создай базу данных (если не создана)
+Через psql (SQL Shell):
+
+# Запусти psql
+
+psql -U postgres -h localhost
+
+# Внутри psql создай БД (если ещё нет):
+
+CREATE DATABASE skyline_gadgets;
+\q
+
+# 💡 Если psql не найден — используй полный путь: "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -h localhost
+
+🔹 Шаг 5: Если забыл пароль — сбрось его
+
+Открой файл (от имени администратора!):
+
+C:\Program Files\PostgreSQL\16\data\pg_hba.conf
+
+Найди строки:
+
+local all all scram-sha-256
+host all all 127.0.0.1/32 scram-sha-256
+
+Замени scram-sha-256 на trust:
+
+local all all trust
+host all all 127.0.0.1/32 trust
+
+Сохрани и перезапусти службу PostgreSQL (services.msc)
+
+Подключись без пароля: psql -U postgres -h localhost
+
+Смени пароль: ALTER USER postgres PASSWORD 'postgres';
+
+Верни scram-sha-256 в pg_hba.conf и перезапусти службу
+
+🔹 Шаг 6: Инициализируй данные (seed)
+
+# Создаст таблицы и загрузит данные из db.json
+
+npm run reset
+
+✅ Ожидай вывод:
+
+🔄 Полный сброс БД...
+🧹 Очищаем и пересоздаём структуру БД...
+✅ Структура БД создана
+✅ Данные из db.json успешно загружены в PostgreSQL
+✅ БД сброшена и заполнена
+
+⚠️ Внимание: npm run reset удаляет все данные и пересоздаёт БД! Используй только для разработки.
+
+🔹 Шаг 7: Запусти сервер в режиме разработки
+
+npm run dev
+
+✅ Сервер запустится на: http://localhost:3001
+
+🧪 Проверка работы API
+
+Эндпоинт | Метод | Описание
+
+GET /api/products | GET | Список товаров
+GET /api/products/:id | GET | Товар по ID
+GET /api/brands | GET | Список брендов
+GET /api/comments?productId=... | GET | Комментарии к товару
+POST /api/auth/register | POST | Регистрация
+POST /api/auth/login | POST | Вход (возвращает JWT)
+GET /api/cart | GET | Корзина (требует токен)
+POST /api/ratings | POST | Оценка товара (требует токен)
+
+🔑 Тестовые аккаунты
+
+Роль | Логин | Пароль
+
+👤 Пользователь | john | qwerty
+
+👨‍💼 Администратор | admin | admin123
+
+🧭 Пример запроса с авторизацией
+
+# 1. Получи токен
+
+curl -X POST http://localhost:3001/api/auth/login \
+ -H "Content-Type: application/json" \
+ -d '{"login":"john","password":"qwerty"}'
+
+# 2. Используй токен в запросах
+
+curl -X GET http://localhost:3001/api/cart \
+ -H "Authorization: Bearer ТВОЙ*ТОКЕН*ЗДЕСЬ"
+
+🛠️ Частые ошибки и решения
+
+Ошибка | Причина | Решение
+
+SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string | Неверный пароль или формат DATABASE_URL | Проверь .env, сбрось пароль через pg_hba.conf
+
+база данных "skyline_gadgets" не существует | БД не создана | Выполни CREATE DATABASE skyline_gadgets; в psql
+
+отношение "cart_items" не существует | Таблицы не созданы | Запусти npm run reset
+
+401 Unauthorized | Нет JWT-токена в заголовке | Авторизуйся и добавь Authorization: Bearer ...
+
+port 5432 refused | PostgreSQL не запущен | Запусти службу в services.msc или Docker-контейнер
 
 🙌 Автор
-Разработано Airat в рамках учебного fullstack-проекта.
-Фронтенд — на Vercel, бэкенд — на Render.
+Airat Habibulaev
+Frontend/Fullstack Developer
+📧 airat.24@mail.ru | 📱 +7 918 775-82-18 | ✈️ @Airat_Habibulaev
+🔗 GitHub | 🌐 Портфолио
