@@ -16,7 +16,6 @@ export const validateBody = (schema: ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        // У ZodError есть свойство issues, а не errors!
         const errors = error.issues.map((issue) => ({
           path: issue.path.join('.'),
           message: issue.message,
@@ -34,7 +33,7 @@ export const validateQuery = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = schema.parse(req.query);
-      req.validatedQuery = parsed; 
+      req.validatedQuery = parsed;
       next();
     } catch (error) {
       if (error instanceof ZodError) {

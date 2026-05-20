@@ -1,4 +1,4 @@
-// server/utils/jwt.ts
+
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = 'secret123';
